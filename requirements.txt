@@ -1,0 +1,46 @@
+
+# FastAPI Core
+fastapi==0.110.0
+uvicorn==0.27.1
+python-multipart==0.0.9
+
+
+# Environment & Config
+
+python-dotenv==1.0.1
+
+#  Firebase + Google (PINNED)
+
+firebase-admin==6.5.0
+google-cloud-firestore==2.16.0
+google-cloud-storage==2.16.0
+
+#  Gemini
+
+google-generativeai==0.5.4
+
+
+#  PDF & OCR
+
+pymupdf==1.24.1
+pdf2image==1.17.0
+pytesseract==0.3.10
+
+
+#  Digital Signature Validation
+
+cryptography==42.0.5
+asn1crypto==1.5.1
+pypdf==4.2.0
+endesive==2.17.2
+
+
+#  Data & Validation
+
+pydantic==2.6.4
+regex==2024.4.28
+
+
+#  Testing
+
+pytest==8.1.1
