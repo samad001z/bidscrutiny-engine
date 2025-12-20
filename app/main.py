@@ -34,11 +34,15 @@ app = FastAPI(
 )
 
 # ==========================================================
-# CORS (DEV MODE)
+# CORS
 # ==========================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten in prod
+    allow_origins=[
+        "http://localhost:5173",  # Local dev
+        "https://bidscrutiny-engine-github-io.vercel.app",  # Vercel production
+        "https://*.vercel.app"  # All Vercel preview deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
