@@ -5,13 +5,20 @@ import pytesseract
 
 
 # -------------------------------------------------
-# Poppler path (Windows only)
+# Poppler path (Windows only - auto-detected on Linux/Railway)
 # -------------------------------------------------
-POPPLER_PATH = (
-    r"C:\poppler-25.12.0\Library\bin"
-    if os.name == "nt"
-    else None
-)
+POPPLER_PATH = None
+if os.name == "nt":
+    # Windows development
+    possible_paths = [
+        r"C:\poppler-25.12.0\Library\bin",
+        r"C:\Program Files\poppler\bin",
+        r"C:\poppler\bin"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            POPPLER_PATH = path
+            break
 
 
 # -------------------------------------------------

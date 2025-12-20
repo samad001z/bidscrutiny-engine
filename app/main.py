@@ -47,7 +47,12 @@ app.add_middleware(
 # ==========================================================
 # FIREBASE INIT (SINGLETON)
 # ==========================================================
-db, bucket = init_firebase()
+try:
+    db, bucket = init_firebase()
+    print("✓ Firebase initialized successfully")
+except Exception as e:
+    print(f"⚠️ Firebase initialization failed: {str(e)}")
+    db, bucket = None, None
 
 # Ensure temp directory exists
 os.makedirs("temp", exist_ok=True)
@@ -577,7 +582,19 @@ async def download_vendor_report(vendor_id: str):
 # ==========================================================
 @app.get("/")
 def root():
+    firebase_status = "connected" if db is not None else "disconnected"
     return {
-        "status": "BidScrutiny AI Backend Running 🚀",
-        "mode": "DEV (Auth Disabled)"
+        "status": "ok",
+        "service": "BidScrutiny AI Backend",
+        "version": "1.0.0",
+        "firebase": firebase_status,
+        "message": "Service is running"
+    }
+
+@app.get("/health")
+def health_check():
+    """Railway health check endpoint"""
+    return {
+        "status": "healthy",
+        "firebase": "connected" if db is not None else "disconnected"
     }
