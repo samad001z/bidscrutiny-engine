@@ -50,14 +50,16 @@ def init_firebase():
                 print(f"⚠️ Failed to load Firebase credentials: {str(e)}")
                 return None, None
 
-        if not FIREBASE_STORAGE_BUCKET:
-            print("⚠️ FIREBASE_STORAGE_BUCKET not set. Firebase Storage will not work.")
-            # Don't fail here - just warn
+        # Initialize Firebase app with storage bucket if available
+        firebase_config = {}
+        if FIREBASE_STORAGE_BUCKET:
+            firebase_config["storageBucket"] = FIREBASE_STORAGE_BUCKET
+            print(f"✓ Storage bucket configured: {FIREBASE_STORAGE_BUCKET}")
+        else:
+            print("⚠️ FIREBASE_STORAGE_BUCKET not set. Storage will not be available.")
 
         try:
-            firebase_admin.initialize_app(cred, {
-                "storageBucket": FIREBASE_STORAGE_BUCKET if FIREBASE_STORAGE_BUCKET else None
-            })
+            firebase_admin.initialize_app(cred, firebase_config)
         except ValueError:
             # App already initialized
             pass
@@ -73,8 +75,8 @@ def init_firebase():
             print(f"⚠️ Failed to initialize Firestore: {str(e)}")
             return None, None
 
-    # Initialize Storage bucket once
-    if _bucket is None:
+    # Initialize Storage bucket once (optional, won't fail if not available)
+    if _bucket is None and FIREBASE_STORAGE_BUCKET:
         try:
             _bucket = storage.bucket()
         except Exception as e:
