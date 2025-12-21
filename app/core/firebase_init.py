@@ -38,28 +38,47 @@ def init_firebase():
                 raise RuntimeError(f"Failed to decode Firebase credentials: {str(e)}")
         else:
             # Development: Use local file
-            if not FIREBASE_SERVICE_ACCOUNT_PATH:
-                raise RuntimeError(
-                    "FIREBASE_SERVICE_ACCOUNT_PATH not set in .env"
-                )
-            cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
-            print(f"✓ Using local Firebase credentials: {FIREBASE_SERVICE_ACCOUNT_PATH}")
+            if not FIREBASE_SERVICE_ACCOUNT_PATH or not os.path.exists(FIREBASE_SERVICE_ACCOUNT_PATH):
+                print(f"⚠️ Firebase service account not found at: {FIREBASE_SERVICE_ACCOUNT_PATH}")
+                print("⚠️ Firebase will not be initialized. Set FIREBASE_SERVICE_ACCOUNT_BASE64 for production.")
+                return None, None
+            
+            try:
+                cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
+                print(f"✓ Using local Firebase credentials: {FIREBASE_SERVICE_ACCOUNT_PATH}")
+            except Exception as e:
+                print(f"⚠️ Failed to load Firebase credentials: {str(e)}")
+                return None, None
 
         if not FIREBASE_STORAGE_BUCKET:
-            raise RuntimeError(
-                "FIREBASE_STORAGE_BUCKET not set in .env"
-            )
+            print("⚠️ FIREBASE_STORAGE_BUCKET not set. Firebase Storage will not work.")
+            # Don't fail here - just warn
 
-        firebase_admin.initialize_app(cred, {
-            "storageBucket": FIREBASE_STORAGE_BUCKET
-        })
+        try:
+            firebase_admin.initialize_app(cred, {
+                "storageBucket": FIREBASE_STORAGE_BUCKET if FIREBASE_STORAGE_BUCKET else None
+            })
+        except ValueError:
+            # App already initialized
+            pass
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Firebase app: {str(e)}")
+            return None, None
 
     # Initialize Firestore client once
     if _db is None:
-        _db = firestore.client()
+        try:
+            _db = firestore.client()
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Firestore: {str(e)}")
+            return None, None
 
     # Initialize Storage bucket once
     if _bucket is None:
-        _bucket = storage.bucket()
+        try:
+            _bucket = storage.bucket()
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Storage: {str(e)}")
+            # Don't fail - Firestore might still work
 
     return _db, _bucket

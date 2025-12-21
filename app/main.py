@@ -70,11 +70,16 @@ async def add_cors_headers(request, call_next):
 # ==========================================================
 # FIREBASE INIT (SINGLETON)
 # ==========================================================
+db = None
+bucket = None
+firebase_error = None
+
 try:
     db, bucket = init_firebase()
     print("✓ Firebase initialized successfully")
 except Exception as e:
-    print(f"⚠️ Firebase initialization failed: {str(e)}")
+    firebase_error = str(e)
+    print(f"⚠️ Firebase initialization failed: {firebase_error}")
     db, bucket = None, None
 
 # Ensure temp directory exists
@@ -717,10 +722,12 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Railway health check endpoint"""
+    """Railway health check endpoint - returns 200 OK even if Firebase is down"""
     return {
-        "status": "healthy",
+        "status": "ok",
+        "service": "BidScrutiny AI Backend",
         "firebase": "connected" if db is not None else "disconnected",
+        "firebase_error": firebase_error,
         "cors": "enabled"
     }
 
