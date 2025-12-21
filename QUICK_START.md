@@ -1,10 +1,13 @@
 # 🚀 Quick Start Guide - BidScrutiny Engine
 
-## Start the System (30 seconds)
+## Local Development (30 seconds)
 
 ### Terminal 1: Backend
 ```bash
 cd c:\bidscrutiny-engine
+python -m venv venv
+venv\Scripts\activate  # On Mac/Linux: source venv/bin/activate
+pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
 ✅ Wait for: `Uvicorn running on http://127.0.0.1:8000`
@@ -12,6 +15,7 @@ python -m uvicorn app.main:app --reload
 ### Terminal 2: Frontend
 ```bash
 cd c:\bidscrutiny-engine\frontend
+npm install
 npm run dev
 ```
 ✅ Wait for: `Local: http://localhost:5173/`
@@ -23,14 +27,28 @@ npm run dev
 
 ---
 
-## ✅ What's Fixed
+## ☁️ Production Deployment (Railway)
 
-| Issue | Status | Details |
-|-------|--------|---------|
-| Vendor upload timeout | ✅ FIXED | Increased to 120s, proper logging |
-| CORS blocking requests | ✅ FIXED | Auto-detects dev/prod environment |
-| Firebase not saving data | ✅ FIXED | Enhanced error handling & logging |
-| Data not loading dynamically | ✅ FIXED | All endpoints fetch live Firebase data |
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete Railway setup guide.
+
+Quick steps:
+1. Push to GitHub
+2. Connect to Railway
+3. Add environment variables
+4. Railway deploys automatically
+
+---
+
+## ✅ Key Features
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Tender Upload & Extraction | ✅ WORKING | Gemini extracts structured data |
+| Vendor Bid Submission | ✅ WORKING | Full bid document processing |
+| Firebase Storage | ✅ WORKING | PDFs stored in Cloud Storage |
+| Firestore Database | ✅ WORKING | All data persisted to Firestore |
+| AI Evaluation | ✅ WORKING | Vendor matching against requirements |
+| Health Check | ✅ WORKING | Railway uses `/health` endpoint |
 
 ---
 
