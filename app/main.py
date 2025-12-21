@@ -39,18 +39,28 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Local dev
-        "http://localhost:3000",  # Local dev alt
-        "https://bidscrutiny-engine-github-io.vercel.app",  # Vercel production
-        "https://bidscrutiny-engine-github-rf5tdkuj-samad001zs-projects.vercel.app",  # Preview deployments
-        "https://*.vercel.app",  # All Vercel preview deployments
-        "*"  # Allow all origins (for development)
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://bidscrutiny-engine-github-io.vercel.app",
+        "https://bidscrutiny-engine-github-rf5tdkujl-samad001zs-projects.vercel.app",
+        "https://bidscrutiny-engine.vercel.app",
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,  # Changed to False to allow with wildcard
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Allow all origins as fallback (simpler approach)
+from fastapi.middleware import Middleware
+
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 # ==========================================================
 # FIREBASE INIT (SINGLETON)
