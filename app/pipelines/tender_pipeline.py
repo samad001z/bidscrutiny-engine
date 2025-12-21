@@ -147,6 +147,10 @@ def save_tender_to_firebase(tender_json: Dict, pdf_path: str) -> str:
         }
 
         # Save JSON to Firestore
+        if db is None:
+            print("  ❌ Firebase Firestore not initialized")
+            raise RuntimeError("Firestore is not available")
+            
         try:
             db.collection("tenders").document(unique_doc_id).set(data_to_save)
             print(f"  ✓ Tender JSON saved to Firestore")
@@ -155,22 +159,25 @@ def save_tender_to_firebase(tender_json: Dict, pdf_path: str) -> str:
             raise
 
         # Upload PDF to Storage
-        try:
-            blob = bucket.blob(f"tenders/{unique_doc_id}.pdf")
-            blob.upload_from_filename(
-                pdf_path,
-                content_type="application/pdf"
-            )
-            pdf_url = blob.public_url
-            print(f"  ✓ PDF uploaded to Storage: {pdf_url}")
-            
-            # Update document with PDF URL
-            db.collection("tenders").document(unique_doc_id).update({
-                "pdf_url": pdf_url
-            })
-        except Exception as e:
-            print(f"  ⚠ PDF upload failed: {str(e)}")
-            # Don't fail the entire process if PDF upload fails
+        if bucket is not None:
+            try:
+                blob = bucket.blob(f"tenders/{unique_doc_id}.pdf")
+                blob.upload_from_filename(
+                    pdf_path,
+                    content_type="application/pdf"
+                )
+                pdf_url = blob.public_url
+                print(f"  ✓ PDF uploaded to Storage: {pdf_url}")
+                
+                # Update document with PDF URL
+                db.collection("tenders").document(unique_doc_id).update({
+                    "pdf_url": pdf_url
+                })
+            except Exception as e:
+                print(f"  ⚠ PDF upload failed: {str(e)}")
+                # Don't fail the entire process if PDF upload fails
+        else:
+            print("  ⚠ Firebase Storage bucket not configured, skipping PDF upload")
 
         print(f"  ✓ Tender successfully stored with ID: {unique_doc_id}")
         return unique_doc_id

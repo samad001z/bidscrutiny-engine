@@ -179,6 +179,11 @@ def save_vendor_to_firebase(
     document_hash = generate_sha256_hash(vendor_text)
     print(f"    Document hash: {document_hash[:8]}...")
 
+    # Check if Firebase is initialized
+    if db is None:
+        print("  ❌ Firebase Firestore not initialized")
+        raise RuntimeError("Firestore is not available")
+
     # Duplicate check (same tender + same document)
     try:
         existing = list(
@@ -209,17 +214,21 @@ def save_vendor_to_firebase(
     print(f"  - Generated unique vendor ID: {unique_vendor_id}")
 
     # Upload PDF
-    try:
-        blob = bucket.blob(f"tenders/{tender_id}/vendors/{unique_vendor_id}.pdf")
-        blob.upload_from_string(
-            vendor_pdf_bytes,
-            content_type="application/pdf"
-        )
-        pdf_url = blob.public_url
-        print(f"  ✓ PDF uploaded to Storage: {pdf_url}")
-    except Exception as e:
-        print(f"  ❌ PDF upload failed: {str(e)}")
-        pdf_url = None
+    pdf_url = None
+    if bucket is not None:
+        try:
+            blob = bucket.blob(f"tenders/{tender_id}/vendors/{unique_vendor_id}.pdf")
+            blob.upload_from_string(
+                vendor_pdf_bytes,
+                content_type="application/pdf"
+            )
+            pdf_url = blob.public_url
+            print(f"  ✓ PDF uploaded to Storage: {pdf_url}")
+        except Exception as e:
+            print(f"  ⚠ PDF upload failed: {str(e)}")
+            pdf_url = None
+    else:
+        print("  ⚠ Firebase Storage bucket not configured, skipping PDF upload")
 
     # Store Vendor Document with metadata
     vendor_doc = {
