@@ -2,8 +2,8 @@
 set -e
 
 echo "Installing dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 echo "Dependencies installed successfully!"
 echo "Ready to start the application..."
