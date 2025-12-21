@@ -40,12 +40,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # Local dev
+        "http://localhost:3000",  # Local dev alt
         "https://bidscrutiny-engine-github-io.vercel.app",  # Vercel production
-        "https://*.vercel.app"  # All Vercel preview deployments
+        "https://bidscrutiny-engine-github-rf5tdkuj-samad001zs-projects.vercel.app",  # Preview deployments
+        "https://*.vercel.app",  # All Vercel preview deployments
+        "*"  # Allow all origins (for development)
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ==========================================================
