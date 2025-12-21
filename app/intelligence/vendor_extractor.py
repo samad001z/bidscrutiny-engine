@@ -15,42 +15,54 @@ def extract_vendor_json_from_text(vendor_text: str) -> Dict:
     """
 
     prompt = f"""
-You are an AI Vendor Document Parser for Indian Government Procurement (GeM / eProc).
+You are an EXPERT AI Vendor Document Parser for Indian Government Procurement (GeM / eProc).
 
-Extract ALL vendor details from the following document text and convert it into CLEAN JSON.
+Extract ALL vendor details from the bid document and return CLEAN, COMPLETE JSON.
+
+CRITICAL EXTRACTION PRIORITY:
+1. Company legal name and registration details
+2. Contact person, email, phone (from authorized signatory)
+3. GST number, PAN, CIN, MSME certificate
+4. Full address with PIN code
+5. ISO certifications, quality certifications
+6. Years of experience and industry background
+7. Past work history (at least 3 completed projects)
+8. Annual turnover for last 3 years
+9. Equipment and infrastructure details
+10. Product/service specifications being offered
+11. Quantity and quoted price
+12. All attached certificates and documents
+13. Declarations and undertakings
 
 STRICT RULES:
 - Return ONLY valid JSON.
 - No markdown, no explanations, no commentary.
 - If a field is missing, use "", 0, false, or [].
 - Do NOT hallucinate or infer missing data.
+- Extract exactly what is mentioned in the document.
 
-FIELDS (RETURN EXACTLY THIS SCHEMA):
+RETURN EXACTLY THIS SCHEMA WITH ALL FIELDS POPULATED:
 
 {{
-  "vendor_id": "",
-  "company_name": "",
-  "address": "",
-  "contact_person": "",
-  "email": "",
-  "phone": "",
-  "gst_number": "",
-  "pan_number": "",
-  "cin_number": "",
-  "msme_status": "",
-  "iso_certifications": [],
-
+  "vendor_id": "Company registration number or GST",
+  "company_name": "Full legal company name",
+  "address": "Complete address with city, state, PIN",
+  "contact_person": "Name of authorized signatory",
+  "email": "Contact email address",
+  "phone": "Contact phone number with country code",
+  "gst_number": "Valid GST number if present",
+  "pan_number": "PAN of company",
+  "cin_number": "CIN if registered company",
+  "msme_status": "MSME certificate status if applicable",
+  "iso_certifications": ["List each ISO or quality certification"],
   "local_content_percentage": 0,
-
   "experience_years": 0,
-  "past_work_summary": [],
+  "past_work_summary": ["List each completed project with client, value, date"],
   "annual_turnover": 0,
-
-  "offered_item_specifications": [],
+  "offered_item_specifications": ["List each product/service specification"],
   "offered_quantity": 0,
   "offered_price": 0,
-
-  "uploaded_documents": [],
+  "uploaded_documents": ["List all attached documents with page references"],
   "declarations": {{
     "no_blacklisting": false,
     "authorized_signature_present": false,

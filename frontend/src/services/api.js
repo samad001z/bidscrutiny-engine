@@ -1,12 +1,33 @@
 import axios from "axios";
 
-const railwayURL = "https://web-production-f4013.up.railway.app";
-const localhostURL = "http://localhost:8000";
+// Determine API URL based on environment
+const getAPIUrl = () => {
+  // Check environment variable first
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Production: use same domain
+  if (!import.meta.env.DEV) {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    return `${protocol}//${host}`;
+  }
+  
+  // Development: use localhost
+  return "http://localhost:8000";
+};
+
+const API_URL = getAPIUrl();
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || railwayURL,
-  timeout: 12000,
+  baseURL: API_URL,
+  timeout: 300000, // 300 seconds (5 minutes) - AI processing takes time
 });
+
+// Log API configuration
+console.log(`[API Config] Environment: ${import.meta.env.DEV ? "DEVELOPMENT" : "PRODUCTION"}`);
+console.log(`[API Config] Base URL: ${api.defaults.baseURL}`);
 
 // Add detailed request logging
 api.interceptors.request.use(config => {

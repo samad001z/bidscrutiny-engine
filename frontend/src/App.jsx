@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+
 import Layout from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -11,9 +13,22 @@ import TenderBidsPage from "./pages/TenderBidsPage";
 export default function App() {
   return (
     <BrowserRouter>
+      {/* 🔔 Global Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            fontSize: "14px",
+          },
+        }}
+      />
+
       <Routes>
+        {/* 🔐 Public Route */}
         <Route path="/" element={<Login />} />
 
+        {/* 🏛️ Protected App Layout */}
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/evaluation/:vendorId" element={<EvaluationPage />} />

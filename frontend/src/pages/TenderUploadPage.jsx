@@ -24,7 +24,8 @@ export default function TenderUploadPage() {
       const response = await api.post("/upload-tender", formData, {
         headers: {
           "Content-Type": "multipart/form-data"
-        }
+        },
+        timeout: 300000 
       });
       
       console.log("Upload successful:", response.data);
@@ -46,13 +47,25 @@ export default function TenderUploadPage() {
       let errorMsg = "Failed to upload tender. ";
       
       if (!error.response) {
-        errorMsg += "Backend server is not responding. Please check the connection and try again.";
+        if (error.code === "ECONNABORTED") {
+          errorMsg = "Request timed out. The server is processing your tender through OCR + AI:\n\n" +
+                     "• Optical Character Recognition (OCR)\n" +
+                     "• Gemini AI Extraction\n\n" +
+                     "This can take 2-5 minutes. Processing takes time!\n\n" +
+                     "Make sure:\n" +
+                     "1. Backend is running\n" +
+                     "2. GEMINI_API_KEY is valid\n" +
+                     "3. Firebase is configured\n\n" +
+                     "Try again - the AI is working for you!";
+        } else {
+          errorMsg += "Backend server is not responding. Please check the connection and try again.";
+        }
       } else if (error.response.status === 400) {
         errorMsg += "Invalid file or form data. Please check the file and try again.";
       } else if (error.response.status === 413) {
         errorMsg += "File is too large. Maximum 50MB allowed.";
       } else if (error.response.status === 500) {
-        errorMsg += "Server error. Please try again in a moment.";
+        errorMsg += `Server error: ${error.response.data?.detail || 'Unknown error'}`;
       }
       
       alert(errorMsg);

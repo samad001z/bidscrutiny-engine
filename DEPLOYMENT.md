@@ -1,53 +1,94 @@
-# 🚀 Railway Deployment Guide - BidScrutiny Engine Backend
+# 🚀 BidScrutiny Engine - Local Development & Deployment Guide
 
-## Prerequisites
+## Local Development Setup
 
-1. **Railway Account**: Sign up at [railway.app](https://railway.app)
-2. **GitHub Repository**: Push your code to GitHub
-3. **Firebase Project**: Set up Firebase with Firestore and Storage
-4. **Gemini API Key**: Get from [Google AI Studio](https://makersuite.google.com/app/apikey)
+### Prerequisites
+- Python 3.9+
+- Node.js 16+
+- Firebase project with credentials
+- Gemini API key
 
----
-
-## 📋 Pre-Deployment Checklist
-
-### ✅ Required Files (Already Created)
-- [x] `Procfile` - Railway start command
-- [x] `requirements.txt` - Python dependencies
-- [x] `runtime.txt` - Python version
-- [x] `railway.toml` - Railway configuration
-- [x] `.gitignore` - Ignore sensitive files
-- [x] `.env.example` - Environment variables template
-
-### ⚠️ DO NOT COMMIT
-- ❌ `.env` file
-- ❌ `serviceAccount.json`
-- ❌ `venv/` folder
-- ❌ `__pycache__/` folders
-
----
-
-## 🔧 Railway Deployment Steps
-
-### Step 1: Prepare Firebase Service Account
-
-1. Go to Firebase Console → Project Settings → Service Accounts
-2. Click "Generate new private key"
-3. Download the JSON file
-4. **Convert to Base64** (for Railway environment variable):
-
-**Windows PowerShell:**
-```powershell
-$bytes = [System.IO.File]::ReadAllBytes("path\to\serviceAccount.json")
-[Convert]::ToBase64String($bytes) | clip
-```
-
-**Linux/Mac:**
+### Backend Setup
 ```bash
-base64 -w 0 serviceAccount.json | pbcopy
+cd c:\bidscrutiny-engine
+
+# Create virtual environment
+python -m venv venv
+.\venv\Scripts\Activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start server
+python -m uvicorn app.main:app --reload
 ```
 
-5. Save this base64 string - you'll need it for Railway
+Backend: `http://localhost:8000`
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend: `http://localhost:5173`
+
+---
+
+## Environment Configuration
+
+Create `.env` file:
+
+```bash
+GEMINI_API_KEY=your_gemini_api_key
+FIREBASE_SERVICE_ACCOUNT_PATH=serviceAccount.json
+FIREBASE_STORAGE_BUCKET=your-bucket.appspot.com
+ENV=development
+```
+
+---
+
+## API Endpoints
+
+- `POST /upload-tender` - Upload tender PDF
+- `POST /upload-vendor` - Submit vendor bid
+- `GET /compare-all` - All vendors
+- `GET /tenders` - Available tenders
+- `GET /health` - Health check
+
+---
+
+## Production Build
+
+```bash
+cd frontend
+npm run build
+# Output: dist/
+```
+
+Deploy dist/ folder to any static host.
+
+---
+
+## Troubleshooting
+
+### Backend Not Responding
+```bash
+curl http://localhost:8000/health
+```
+
+### Firebase Connection
+```bash
+curl http://localhost:8000/debug/firebase
+```
+
+### Clear Frontend Cache
+`Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+
+---
+
+**Ready to deploy!** ✅
 
 ---
 

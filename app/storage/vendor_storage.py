@@ -65,6 +65,7 @@ def save_vendor_result(
 
     # Generate vendor ID FIRST (never dependent on storage)
     vendor_id = make_vendor_id(vendor_name)
+    print(f"  ▶ Generated vendor_id: {vendor_id}")
 
     # -----------------------------
     # Build Firestore document
@@ -88,14 +89,19 @@ def save_vendor_result(
     # -----------------------------
     # Save to Firestore (PRIMARY)
     # -----------------------------
-    doc_ref = (
-        db.collection("tenders")
-        .document(tender_id)
-        .collection("vendors")
-        .document(vendor_id)
-    )
+    try:
+        doc_ref = (
+            db.collection("tenders")
+            .document(tender_id)
+            .collection("vendors")
+            .document(vendor_id)
+        )
 
-    doc_ref.set(doc)
+        doc_ref.set(doc)
+        print(f"  ✓ Saved to Firestore: tenders/{tender_id}/vendors/{vendor_id}")
+    except Exception as e:
+        print(f"  ❌ Firestore save failed: {str(e)}")
+        raise
 
     # -----------------------------
     # Upload vendor PDF (OPTIONAL)
@@ -113,10 +119,12 @@ def save_vendor_result(
             doc_ref.update({
                 "pdf_path": blob_path
             })
+            
+            print(f"  ✓ Uploaded PDF to Storage: {blob_path}")
 
         except Exception as e:
             # IMPORTANT: never block vendor_id creation
-            print("⚠️ Vendor PDF upload failed:", e)
+            print(f"  ⚠️ Vendor PDF upload failed: {str(e)}")
 
     # -----------------------------
     # ALWAYS return vendor_id

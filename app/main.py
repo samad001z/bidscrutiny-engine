@@ -19,10 +19,7 @@ from app.pipelines.vendor_pipeline import run_vendor_pipeline
 # AGENTS / COMPARISON
 # ==========================================================
 from app.intelligence.vendor_extractor import run_vendor_extraction_pipeline
-from app.comparison.compare_agents import (
-    compare_single_tender,
-    compare_all_tenders
-)
+from app.comparison.compare_agents import compare_single_tender
 
 # ==========================================================
 # FASTAPI APP
@@ -36,23 +33,31 @@ app = FastAPI(
 # ==========================================================
 # CORS
 # ==========================================================
+# Build allowed origins based on environment
+allow_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+]
+
+# Add production URLs from environment
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allow_origins.append(frontend_url)
+    print(f"[CORS] Added frontend URL: {frontend_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://bidscrutiny-engine-github-io.vercel.app",
-        "https://bidscrutiny-engine-github-rf5tdkujl-samad001zs-projects.vercel.app",
-        "https://bidscrutiny-engine.vercel.app",
-    ],
-    allow_credentials=False,  # Changed to False to allow with wildcard
+    allow_origins=allow_origins,
+    allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
 
 # Allow all origins as fallback (simpler approach)
-from fastapi.middleware import Middleware
 
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
@@ -86,7 +91,9 @@ async def upload_tender(
 ):
     """Upload a tender document and process with OCR"""
     try:
-        print(f"\n[TENDER UPLOAD] Started")
+        print(f"\n{'='*60}")
+        print(f"[TENDER UPLOAD] Started")
+        print(f"{'='*60}")
         print(f"  - Name: {name}")
         print(f"  - Description: {description}")
         print(f"  - File: {file.filename}")
@@ -106,22 +113,30 @@ async def upload_tender(
         try:
             # Run full tender pipeline (OCR happens inside)
             print(f"  ▶ Running tender pipeline...")
+            print(f"  ⏳ OCR + AI extraction in progress (1-3 minutes)...")
+            print(f"  ⏳ Gemini is analyzing your document...")
             result = run_tender_pipeline(tender_pdf_path)
-            print(f"  ✓ Pipeline complete: {result}")
+            print(f"  ✓ Pipeline complete!")
             
             # Add name and description to the result
             if "tender_id" in result:
                 # Update the tender document in Firestore with name and description
+                print(f"  ▶ Updating Firestore...")
                 db.collection("tenders").document(result["tender_id"]).update({
                     "title": name,
                     "description": description
                 })
                 print(f"  ✓ Updated Firestore: {result['tender_id']}")
             
+            print(f"{'='*60}")
+            print(f"[TENDER UPLOAD] SUCCESS ✓")
+            print(f"{'='*60}\n")
+            
             return {
                 **result,
                 "message": "Tender uploaded successfully",
-                "name": name
+                "name": name,
+                "status": "completed"
             }
         finally:
             if os.path.exists(tender_pdf_path):
@@ -129,10 +144,13 @@ async def upload_tender(
                 print(f"  ✓ Cleaned up temp file")
                 
     except Exception as e:
+        print(f"{'='*60}")
+        print(f"[TENDER UPLOAD] FAILED ❌")
+        print(f"{'='*60}")
         print(f"  ❌ Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return {"error": str(e), "detail": "Failed to process tender"}
+        return {"error": str(e), "detail": "Failed to process tender", "status": "failed"}
 
 # ==========================================================
 # 2️⃣ UPLOAD VENDOR BID
@@ -143,60 +161,128 @@ async def upload_vendor(
     vendor_name: str = Form(...),
     tender_id: str = Form(...)
 ):
-    if not file.filename.lower().endswith(".pdf"):
-        return {"error": "Only PDF files allowed"}
-
-    # Save vendor PDF to temp path
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(await file.read())
-        vendor_pdf_path = tmp.name
-
+    """Upload vendor bid document and process evaluation"""
     try:
-        # --------------------------------------------------
-        # OCR (FILE PATH ONLY — matches ocr_engine.py)
-        # --------------------------------------------------
-        vendor_text = extract_text_from_pdf(vendor_pdf_path)
-
-        # --------------------------------------------------
-        # Fetch tender JSON
-        # --------------------------------------------------
-        tender_doc = db.collection("tenders").document(tender_id).get()
-        if not tender_doc.exists:
-            return {"error": f"Tender '{tender_id}' not found"}
-
-        tender_json = tender_doc.to_dict()
-
-        # --------------------------------------------------
-        # Vendor extraction (AI)
-        # --------------------------------------------------
-        vendor_json = run_vendor_extraction_pipeline(vendor_text)
+        print(f"\n{'='*60}")
+        print(f"[VENDOR UPLOAD] Started")
+        print(f"{'='*60}")
+        print(f"  - Vendor Name: {vendor_name}")
+        print(f"  - Tender ID: {tender_id}")
+        print(f"  - File: {file.filename}")
+        print(f"  - Content Type: {file.content_type}")
         
-        # Override vendor name from form
-        vendor_json["vendor_name"] = vendor_name
+        if not file.filename.lower().endswith(".pdf"):
+            print(f"  ❌ Invalid file type: {file.filename}")
+            return {"error": "Only PDF files allowed"}
 
-        # --------------------------------------------------
-        # Full vendor evaluation pipeline
-        # --------------------------------------------------
-        with open(vendor_pdf_path, "rb") as f:
-            vendor_pdf_bytes = f.read()
+        # Save vendor PDF to temp path
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            content = await file.read()
+            tmp.write(content)
+            vendor_pdf_path = tmp.name
+            print(f"  ✓ File saved: {vendor_pdf_path} ({len(content)} bytes)")
 
-        result = run_vendor_pipeline(
-            vendor_text=vendor_text,
-            vendor_json=vendor_json,
-            tender_json=tender_json,
-            vendor_pdf_bytes=vendor_pdf_bytes,
-            vendor_filename=file.filename
-        )
+        try:
+            # --------------------------------------------------
+            # OCR (FILE PATH ONLY — matches ocr_engine.py)
+            # --------------------------------------------------
+            print(f"  ▶ Extracting text from PDF (OCR)...")
+            vendor_text = extract_text_from_pdf(vendor_pdf_path)
+            print(f"  ✓ Text extracted: {len(vendor_text)} characters")
 
-        return {
-            **result,
-            "message": "Vendor bid submitted successfully",
-            "vendor_name": vendor_name
-        }
+            # --------------------------------------------------
+            # Fetch tender JSON (handle both database ID and extracted ID)
+            # --------------------------------------------------
+            print(f"  ▶ Fetching tender from Firebase...")
+            print(f"    Tender ID provided: {tender_id}")
+            
+            # Try direct lookup first (if it's a database document ID)
+            tender_doc = db.collection("tenders").document(tender_id).get()
+            
+            # If not found, search by extracted_tender_id field
+            if not tender_doc.exists:
+                print(f"  ⚠ Direct lookup failed, searching by extracted_tender_id...")
+                try:
+                    results = list(
+                        db.collection("tenders")
+                        .where(filter=db.FieldFilter("extracted_tender_id", "==", tender_id))
+                        .limit(1)
+                        .stream()
+                    )
+                    if results:
+                        tender_doc = results[0]
+                        actual_tender_id = tender_doc.id
+                        print(f"  ✓ Found tender by extracted_tender_id: {actual_tender_id}")
+                    else:
+                        print(f"  ❌ Tender not found: {tender_id}")
+                        return {"error": f"Tender '{tender_id}' not found in database"}
+                except Exception as search_error:
+                    print(f"  ❌ Search failed: {str(search_error)}")
+                    return {"error": f"Failed to find tender: {str(search_error)}"}
+            else:
+                actual_tender_id = tender_id
 
-    finally:
-        if os.path.exists(vendor_pdf_path):
-            os.remove(vendor_pdf_path)
+            tender_json = tender_doc.to_dict()
+            # Ensure the actual database ID is used for vendor storage
+            tender_json["_db_document_id"] = actual_tender_id
+            print(f"  ✓ Tender found: {tender_json.get('title', 'Untitled')}")
+
+            # --------------------------------------------------
+            # Vendor extraction (AI)
+            # --------------------------------------------------
+            print(f"  ▶ Running vendor extraction AI...")
+            vendor_json = run_vendor_extraction_pipeline(vendor_text)
+            
+            # Override vendor name from form
+            vendor_json["vendor_name"] = vendor_name
+            print(f"  ✓ Vendor JSON extracted")
+
+            # --------------------------------------------------
+            # Full vendor evaluation pipeline
+            # --------------------------------------------------
+            print(f"  ▶ Running fraud & compliance analysis...")
+            print(f"  ⏳ Fraud detection in progress (1-3 minutes)...")
+            print(f"  ⏳ Compliance comparison in progress...")
+            print(f"  ⏳ Gemini is evaluating your vendor submission...")
+            with open(vendor_pdf_path, "rb") as f:
+                vendor_pdf_bytes = f.read()
+
+            result = run_vendor_pipeline(
+                vendor_text=vendor_text,
+                vendor_json=vendor_json,
+                tender_json=tender_json,
+                vendor_pdf_bytes=vendor_pdf_bytes,
+                vendor_filename=file.filename
+            )
+            print(f"  ✓ Evaluation complete")
+
+            print(f"{'='*60}")
+            print(f"[VENDOR UPLOAD] SUCCESS ✓")
+            print(f"{'='*60}")
+            print(f"  - Vendor ID: {result.get('vendor_id', 'N/A')}")
+            print(f"  - Final Score: {result.get('final_score', 0)}")
+            print(f"  - Pass/Fail: {result.get('pass_fail', 'UNKNOWN')}")
+            print(f"{'='*60}\n")
+
+            return {
+                **result,
+                "message": "Vendor bid submitted successfully",
+                "vendor_name": vendor_name,
+                "status": "completed"
+            }
+        finally:
+            if os.path.exists(vendor_pdf_path):
+                os.remove(vendor_pdf_path)
+                print(f"  ✓ Cleaned up temp file")
+                
+    except Exception as e:
+        print(f"{'='*60}")
+        print(f"[VENDOR UPLOAD] FAILED ❌")
+        print(f"{'='*60}")
+        print(f"  ❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "detail": "Failed to process vendor bid", "status": "failed"}
 
 # ==========================================================
 # 3️⃣ COMPARE VENDORS FOR ONE TENDER
@@ -637,3 +723,51 @@ def health_check():
         "firebase": "connected" if db is not None else "disconnected",
         "cors": "enabled"
     }
+
+@app.get("/debug/firebase")
+def debug_firebase():
+    """Test Firebase connection and list data"""
+    try:
+        # Test Firestore read
+        tenders = db.collection("tenders").limit(5).stream()
+        tender_count = sum(1 for _ in tenders)
+        
+        # Re-fetch for actual data
+        tenders = db.collection("tenders").stream()
+        tender_list = []
+        vendor_count = 0
+        
+        for tender_doc in tenders:
+            tender_id = tender_doc.id
+            tender_data = tender_doc.to_dict()
+            tender_list.append({
+                "id": tender_id,
+                "title": tender_data.get("title", "Unknown"),
+                "created_at": tender_data.get("created_at", "Unknown")
+            })
+            
+            # Count vendors
+            vendor_stream = (
+                db.collection("tenders")
+                .document(tender_id)
+                .collection("vendors")
+                .stream()
+            )
+            vendor_count += sum(1 for _ in vendor_stream)
+        
+        return {
+            "status": "connected",
+            "firebase": db is not None,
+            "storage": bucket is not None,
+            "tenders_count": len(tender_list),
+            "vendors_count": vendor_count,
+            "tenders": tender_list,
+            "message": "Firebase connection successful"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "firebase": db is not None,
+            "storage": bucket is not None
+        }
