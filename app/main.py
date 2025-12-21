@@ -84,35 +84,55 @@ async def upload_tender(
     name: str = Form(...),
     description: str = Form(...)
 ):
-    if not file.filename.lower().endswith(".pdf"):
-        return {"error": "Only PDF files allowed"}
-
-    # Save tender PDF to temp path
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(await file.read())
-        tender_pdf_path = tmp.name
-
+    """Upload a tender document and process with OCR"""
     try:
-        # Run full tender pipeline (OCR happens inside)
-        result = run_tender_pipeline(tender_pdf_path)
+        print(f"\n[TENDER UPLOAD] Started")
+        print(f"  - Name: {name}")
+        print(f"  - Description: {description}")
+        print(f"  - File: {file.filename}")
+        print(f"  - Content Type: {file.content_type}")
         
-        # Add name and description to the result
-        if "tender_id" in result:
-            # Update the tender document in Firestore with name and description
-            db.collection("tenders").document(result["tender_id"]).update({
-                "title": name,
-                "description": description
-            })
-            
-        return {
-            **result,
-            "message": "Tender uploaded successfully",
-            "name": name
-        }
+        if not file.filename.lower().endswith(".pdf"):
+            print(f"  ❌ Invalid file type: {file.filename}")
+            return {"error": "Only PDF files allowed"}
 
-    finally:
-        if os.path.exists(tender_pdf_path):
-            os.remove(tender_pdf_path)
+        # Save tender PDF to temp path
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tender_pdf_path = tmp.name
+            print(f"  ✓ File saved: {tender_pdf_path} ({len(content)} bytes)")
+
+        try:
+            # Run full tender pipeline (OCR happens inside)
+            print(f"  ▶ Running tender pipeline...")
+            result = run_tender_pipeline(tender_pdf_path)
+            print(f"  ✓ Pipeline complete: {result}")
+            
+            # Add name and description to the result
+            if "tender_id" in result:
+                # Update the tender document in Firestore with name and description
+                db.collection("tenders").document(result["tender_id"]).update({
+                    "title": name,
+                    "description": description
+                })
+                print(f"  ✓ Updated Firestore: {result['tender_id']}")
+            
+            return {
+                **result,
+                "message": "Tender uploaded successfully",
+                "name": name
+            }
+        finally:
+            if os.path.exists(tender_pdf_path):
+                os.remove(tender_pdf_path)
+                print(f"  ✓ Cleaned up temp file")
+                
+    except Exception as e:
+        print(f"  ❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "detail": "Failed to process tender"}
 
 # ==========================================================
 # 2️⃣ UPLOAD VENDOR BID

@@ -12,18 +12,50 @@ export default function TenderUploadPage() {
   const handleUpload = async (formData) => {
     try {
       setIsLoading(true);
-      await api.post("/upload-tender", formData, {
+      
+      // Log upload attempt
+      console.log("Uploading tender...", {
+        name: formData.get("name"),
+        description: formData.get("description"),
+        file: formData.get("file")?.name,
+        baseURL: api.defaults.baseURL
+      });
+      
+      const response = await api.post("/upload-tender", formData, {
         headers: {
           "Content-Type": "multipart/form-data"
         }
       });
+      
+      console.log("Upload successful:", response.data);
       setSuccess(true);
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
     } catch (error) {
-      console.error("Error uploading tender:", error);
-      alert("Failed to upload tender. Please try again.");
+      console.error("Error uploading tender:", {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        isNetworkError: !error.response,
+        baseURL: api.defaults.baseURL
+      });
+      
+      let errorMsg = "Failed to upload tender. ";
+      
+      if (!error.response) {
+        errorMsg += "Backend server is not responding. Please check the connection and try again.";
+      } else if (error.response.status === 400) {
+        errorMsg += "Invalid file or form data. Please check the file and try again.";
+      } else if (error.response.status === 413) {
+        errorMsg += "File is too large. Maximum 50MB allowed.";
+      } else if (error.response.status === 500) {
+        errorMsg += "Server error. Please try again in a moment.";
+      }
+      
+      alert(errorMsg);
     } finally {
       setIsLoading(false);
     }
