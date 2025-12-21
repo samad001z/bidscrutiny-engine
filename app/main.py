@@ -614,5 +614,6 @@ def health_check():
     """Railway health check endpoint"""
     return {
         "status": "healthy",
-        "firebase": "connected" if db is not None else "disconnected"
+        "firebase": "connected" if db is not None else "disconnected",
+        "cors": "enabled"
     }
