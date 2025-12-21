@@ -2,13 +2,7 @@
   deps = [
     pkgs.python311
     pkgs.python311Packages.pip
-    pkgs.libpoppler
-    pkgs.libpoppler_cpp
-    pkgs.tesseract
-    pkgs.imagemagick
+    pkgs.python311Packages.setuptools
+    pkgs.python311Packages.wheel
   ];
-  env = {
-    PYTHONUNBUFFERED = "1";
-    REPLIT_NIXES = "python311";
-  };
 }
