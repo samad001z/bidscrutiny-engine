@@ -68,6 +68,21 @@ async def add_cors_headers(request, call_next):
     return response
 
 # ==========================================================
+# APP STARTUP EVENT
+# ==========================================================
+@app.on_event("startup")
+async def startup_event():
+    """Log startup information for debugging"""
+    print("\n" + "="*60)
+    print("🚀 BidScrutiny Backend Starting Up")
+    print("="*60)
+    print(f"Environment: {os.getenv('ENV', 'development')}")
+    print(f"Firebase: {'Connected ✓' if db else 'Not connected ⚠️'}")
+    if firebase_error:
+        print(f"Firebase Error: {firebase_error}")
+    print("="*60 + "\n")
+
+# ==========================================================
 # FIREBASE INIT (SINGLETON)
 # ==========================================================
 db = None
@@ -722,14 +737,8 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Railway health check endpoint - returns 200 OK even if Firebase is down"""
-    return {
-        "status": "ok",
-        "service": "BidScrutiny AI Backend",
-        "firebase": "connected" if db is not None else "disconnected",
-        "firebase_error": firebase_error,
-        "cors": "enabled"
-    }
+    """Railway health check endpoint - always returns 200 OK"""
+    return {"status": "ok"}
 
 @app.get("/debug/firebase")
 def debug_firebase():
