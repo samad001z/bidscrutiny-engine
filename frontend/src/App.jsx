@@ -9,6 +9,7 @@ import ComparisonPage from "./pages/ComparisonPage";
 import TenderUploadPage from "./pages/TenderUploadPage";
 import VendorUploadPage from "./pages/VendorUploadPage";
 import TenderBidsPage from "./pages/TenderBidsPage";
+import AuditTrail from "./AuditTrail";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/upload-tender" element={<TenderUploadPage />} />
           <Route path="/upload-vendor" element={<VendorUploadPage />} />
           <Route path="/tender-bids" element={<TenderBidsPage />} />
+          <Route path="/audit" element={<AuditTrail />} />
         </Route>
       </Routes>
     </BrowserRouter>

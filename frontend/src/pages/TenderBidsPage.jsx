@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../services/api";
+import toast from "react-hot-toast";
 import {
   Search,
   TrendingDown,
@@ -23,9 +24,22 @@ import Loader from "../components/common/Loader";
 export default function TenderBidsPage() {
   const [tenderId, setTenderId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+
+    if (!import.meta.env.DEV) {
+      return `${window.location.protocol}//${window.location.host}`;
+    }
+
+    return "http://localhost:8000";
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -179,6 +193,44 @@ ${data.ai_reasoning ?
     }
   };
 
+  const handleDownloadTenderReport = async () => {
+    const targetTenderId = data?.tender_id || tenderId;
+    if (!targetTenderId) {
+      toast.error("Failed to generate report. Please try again.");
+      return;
+    }
+
+    try {
+      setReportLoading(true);
+
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/report/export/${encodeURIComponent(targetTenderId)}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Report generation failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `BidScrutiny_Report_${targetTenderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Report downloaded successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate report. Please try again.");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const getRiskColor = (score) => {
     if (score >= 80) return "success";
     if (score >= 60) return "warning";
@@ -265,6 +317,15 @@ ${data.ai_reasoning ?
                   </div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={handleDownloadTenderReport}
+                disabled={reportLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0b1f4d] hover:bg-[#08173a] disabled:bg-slate-400 text-white text-sm font-semibold transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {reportLoading ? "Generating Report..." : "Download PDF Report"}
+              </button>
             </div>
           </Card>
 

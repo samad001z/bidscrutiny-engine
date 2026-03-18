@@ -21,7 +21,7 @@ google-cloud-storage==2.16.0
 # ===============================
 # Gemini (Google Generative AI)
 # ===============================
-google-generativeai==0.5.4
+google-genai>=1.0.0
 
 # ===============================
 # PDF Processing & OCR
@@ -31,6 +31,7 @@ pypdf==4.2.0
 pdf2image==1.17.0
 pytesseract==0.3.10
 Pillow==10.3.0
+reportlab==4.1.0
 
 # ===============================
 # Cryptography & Digital Signature
@@ -44,8 +45,5 @@ endesive==2.17.2
 # ===============================
 pydantic==2.6.4
 regex==2024.4.28
+requests==2.31.0
 
-# ===============================
-# Testing (Optional in Prod, OK to keep)
-# ===============================
-pytest==8.1.1

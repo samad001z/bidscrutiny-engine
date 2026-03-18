@@ -27,6 +27,7 @@ wheels/
 .env
 .env.local
 .env.production
+.env*.local
 .env.*.local
 
 # Firebase credentials

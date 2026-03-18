@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutDashboard, Upload, FileText } from "lucide-react";
+import { LayoutDashboard, Upload, FileText, Shield } from "lucide-react";
 
 const commonLinks = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Audit Trail", path: "/audit", icon: Shield },
 ];
 
 const governmentLinks = [

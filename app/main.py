@@ -1,7 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import os
+from io import BytesIO
 
 # ==========================================================
 # CORE IMPORTS
@@ -20,6 +22,8 @@ from app.pipelines.vendor_pipeline import run_vendor_pipeline
 # ==========================================================
 from app.intelligence.vendor_extractor import run_vendor_extraction_pipeline
 from app.comparison.compare_agents import compare_single_tender
+from app.audit import get_audit_logs, log_audit_event
+from app.report_generator import generate_pdf_report
 
 # ==========================================================
 # FASTAPI APP
@@ -151,6 +155,12 @@ async def upload_tender(
             print(f"{'='*60}")
             print(f"[TENDER UPLOAD] SUCCESS ✓")
             print(f"{'='*60}\n")
+
+            log_audit_event(
+                event_type="TENDER_UPLOADED",
+                tender_id=result.get("tender_id", ""),
+                details={"endpoint": "/upload-tender", "status": "success"}
+            )
             
             return {
                 **result,
@@ -284,6 +294,12 @@ async def upload_vendor(
             print(f"  - Pass/Fail: {result.get('pass_fail', 'UNKNOWN')}")
             print(f"{'='*60}\n")
 
+            log_audit_event(
+                event_type="BID_ANALYZED",
+                tender_id=actual_tender_id,
+                details={"endpoint": "/upload-vendor", "status": "success"}
+            )
+
             return {
                 **result,
                 "message": "Vendor bid submitted successfully",
@@ -310,7 +326,37 @@ async def upload_vendor(
 @app.get("/compare/{tender_id}")
 async def compare_tender(tender_id: str):
     """Get detailed vendor comparison for a specific tender"""
-    return compare_single_tender(tender_id)
+    result = compare_single_tender(tender_id)
+    log_audit_event(
+        event_type="VENDOR_RANKED",
+        tender_id=tender_id,
+        details={"endpoint": "/compare/{tender_id}", "status": "success"}
+    )
+    return result
+
+
+@app.get("/audit/logs")
+async def get_all_audit_logs(tender_id: str | None = Query(default=None)):
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "*",
+    }
+    logs = get_audit_logs(tender_id=tender_id)
+    return JSONResponse(content=logs, headers=headers)
+
+
+@app.get("/audit/logs/{tender_id}")
+async def get_tender_audit_logs(tender_id: str):
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "*",
+    }
+    logs = get_audit_logs(tender_id=tender_id)
+    if not logs:
+        raise HTTPException(status_code=404, detail="No audit logs found for this tender")
+    return JSONResponse(content=logs, headers=headers)
 
 # ==========================================================
 # 4️⃣ COMPARE ALL TENDERS (GOVERNMENT DASHBOARD)
@@ -615,6 +661,12 @@ async def get_tender_bids(tender_id: str):
                 "compliance_score": winner["compliance_score"],
                 "reasoning": f"{winner['vendor_name']} is recommended as they have the lowest quoted price (₹{winner['quoted_price']:,.2f}) among eligible bidders with a compliance score of {winner['compliance_score']}%."
             }
+
+        log_audit_event(
+            event_type="VENDOR_RANKED",
+            tender_id=tender_id,
+            details={"endpoint": "/tender/{tender_id}/bids", "status": "success"}
+        )
         
         return {
             "tender_id": tender_id,
@@ -713,6 +765,12 @@ async def download_vendor_report(vendor_id: str):
                     # PDF URL
                     "pdf_url": vendor_data.get("pdf_url", "")
                 }
+
+                log_audit_event(
+                    event_type="REPORT_GENERATED",
+                    tender_id=tender_id,
+                    details={"endpoint": "/vendor/{vendor_id}/report", "status": "success"}
+                )
                 
                 return report
         
@@ -720,6 +778,39 @@ async def download_vendor_report(vendor_id: str):
         
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.post("/report/export/{tender_id}")
+async def export_tender_report(tender_id: str):
+    try:
+        analysis_query = (
+            db.collection("analysis_results")
+            .where("tender_id", "==", tender_id)
+            .order_by("created_at", direction="DESCENDING")
+            .limit(1)
+            .stream()
+        )
+        analysis_docs = list(analysis_query)
+
+        if not analysis_docs:
+            raise HTTPException(status_code=404, detail="Analysis not found for this tender")
+
+        analysis_result = analysis_docs[0].to_dict() or {}
+        audit_logs = get_audit_logs(tender_id=tender_id)
+        pdf_bytes = generate_pdf_report(tender_id, analysis_result, audit_logs)
+
+        return StreamingResponse(
+            BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Disposition": f'attachment; filename="BidScrutiny_Report_{tender_id}.pdf"',
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================================
 # 9️⃣ ROOT / HEALTH CHECK
